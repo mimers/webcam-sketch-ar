@@ -1,0 +1,117 @@
+<html>
+
+<head>
+  <title>WebCam PaintGround</title>
+  <style>
+    body {
+      margin: 0;
+    }
+
+    .container,
+    .toobar {
+      display: flex;
+    }
+
+    .container {
+      flex-direction: column;
+    }
+
+    img {
+      position: absolute;
+      left: 0;
+      opacity: .4;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="toolbar">
+      <span>蒙层图片：</span>
+      <input id="mask" type="file" />
+      <span>图片缩放比例：</span>
+      <input type="range" min="-3" max="3" step="0.1" value="0" id="mask-scale" />
+      <span>视频缩放比例：</span>
+      <input type="range" min="-3" max="3" step="0.1" value="0" id="video-scale" />
+      <span>图片透明度：</span>
+      <input type="range" min="0.1" max="1" step="0.1" value="0.4" id="mask-opacity" />
+    </div>
+    <div class="canvas">
+      <video autoplay></video>
+      <img />
+    </div>
+  </div>
+
+
+  <script>
+    const video = document.querySelector('video');
+    const img = document.querySelector('img');
+    let imgWidth;
+    function initCam() {
+      var constraints = { audio: false, video: { height: 1080 } };
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(function (mediaStream) {
+          video.srcObject = mediaStream;
+          video.onloadedmetadata = function (e) {
+            video.play();
+          };
+        })
+        .catch(function (err) { console.log(err.name + ": " + err.message); });
+    }
+    function rangeToScale(swv) {
+      let sw = Math.max(-3, Math.min(swv, 3))
+      if (sw < 0) {
+        sw = Math.pow(2, sw)
+      } else {
+        sw += 1;
+      }
+      return sw;
+    }
+    function setVideoScale(swv) {
+        const sw = rangeToScale(swv);
+        video.style.width = videoWidth * sw + 'px'
+    }
+    function setImageScale(swv) {
+      const sw = rangeToScale(swv);
+      img.style.width = imgWidth * sw + 'px'
+      console.log('swv', swv, 'sw', sw, 'width', img.style.width);
+    }
+    function initImage() {
+      function handleSelectFile(event) {
+        const file = event.target.files[0];
+        var reader = new FileReader();
+        reader.onload = (e) => {
+          img.src = e.target.result;
+          img.onload = () => {
+            imgWidth = img.width;
+            const vsm = getComputedStyle(video)
+            const vw = parseInt(vsm.width), vh = parseInt(vsm.height);
+            let is;
+            if (vw > vh) {
+              is = vh / img.height;
+            } else {
+              is = vw / img.width;
+            }
+            if (is < 1) {
+              is = -1 / (1 - is);
+            }
+            setImageScale(is);
+          }
+        }
+        reader.readAsDataURL(file);
+      }
+      document.querySelector('input#mask').addEventListener('change', handleSelectFile)
+    }
+    function initControl() {
+      const isv = document.querySelector('input#mask-scale'), vsv = document.querySelector('input#video-scale'), iov = document.querySelector('input#mask-opacity');
+      isv.addEventListener('change', () => {
+        setImageScale(parseFloat(isv.value));
+      })
+    }
+    initCam()
+    initImage()
+    initControl()
+  </script>
+</body>
+
+</html>
